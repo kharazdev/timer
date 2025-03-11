@@ -1,6 +1,6 @@
 {
     "name": "Sleep White Noise",
-    "short_name": "White Noise",
+    "short_name": "Sleep",
     "description": "A white noise generator app to help you sleep",
     "start_url": "/timer/",
     "display": "standalone",
