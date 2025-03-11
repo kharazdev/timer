@@ -1,9 +1,13 @@
 // Service Worker for Sleep White Noise App
 const CACHE_NAME = 'sleep-white-noise-cache-v1';
+
+// Get the base path 
+const basePath = self.location.pathname.replace('sw.js', '');
+
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/sw.js'
+  basePath,
+  basePath + 'index.html',
+  basePath + 'sw.js'
 ];
 
 // Install event - cache all initial resources
@@ -27,7 +31,7 @@ self.addEventListener('fetch', event => {
           return response;
         }
         
-        // Clone the request because it's a one-time use stream
+        // Clone the request
         const fetchRequest = event.request.clone();
         
         return fetch(fetchRequest).then(response => {
@@ -36,7 +40,7 @@ self.addEventListener('fetch', event => {
             return response;
           }
           
-          // Clone the response because it's a one-time use stream
+          // Clone the response
           const responseToCache = response.clone();
           
           caches.open(CACHE_NAME)
@@ -59,7 +63,6 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            // If this cache name isn't in our whitelist, delete it
             return caches.delete(cacheName);
           }
         })
