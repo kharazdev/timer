@@ -244,35 +244,17 @@
           />
         </div>
 
-        <div class="slider-container">
-          <label for="timer">Timer Duration</label>
-          <input
-            type="range"
-            min="1"
-            max="480"
-            step="1"
-            value="30"
-            class="slider"
-            id="timer"
-            disabled
-          />
-          <div class="slider-labels">
-            <span>1m</span>
-            <span>2h</span>
-            <span>4h</span>
-            <span>8h</span>
-          </div>
-          <div class="timer-infinity-toggle">
-            <span class="infinity-label">Infinite</span>
-            <label class="toggle">
-              <input type="checkbox" id="infinity-toggle" checked />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
+        <div class="time-display">
+          <span id="timer-display">1 hr</span>
         </div>
 
-        <div class="time-display">
-          <span id="timer-display">∞</span>
+        <div class="timer-options">
+          <div class="timer-preset" data-time="15">15 min</div>
+          <div class="timer-preset" data-time="30">30 min</div>
+          <div class="timer-preset active" data-time="60">1 hr</div>
+          <div class="timer-preset" data-time="120">2 hrs</div>
+          <div class="timer-preset" data-time="240">4 hrs</div>
+          <div class="timer-preset" data-time="-1">∞</div>
         </div>
 
         <button class="button" id="play-pause">START</button>
@@ -290,11 +272,9 @@
       let isPlaying = false;
       let timerInterval;
       let remainingTime = -1; // -1 means infinity
-      let selectedTime = 30; // Default selected time in minutes
       let currentNoiseType = "white";
       let noiseBuffer;
       let visualizerBars = [];
-      let infiniteMode = true; // Start with infinite mode enabled
 
       // Initialize visualizer
       function initVisualizer() {
@@ -386,8 +366,7 @@
           b2 = 0,
           b3 = 0,
           b4 = 0,
-          b5 = 0,
-          b6 = 0;
+          b5 = 0;
         for (let i = 0; i < bufferSize; i++) {
           let white = Math.random() * 2 - 1;
 
@@ -401,8 +380,8 @@
             b3 = 0.8665 * b3 + white * 0.3104856;
             b4 = 0.55 * b4 + white * 0.5329522;
             b5 = -0.7616 * b5 - white * 0.016898;
-            b6 = white * 0.5362;
-            data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6) * 0.11;
+            data[i] =
+              (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
           } else if (type === "brown") {
             // Brown noise (integrated white noise)
             const brown = (b0 + 0.02 * white) / 1.02;
@@ -460,9 +439,9 @@
           document.getElementById("status").textContent = "Playing";
           isPlaying = true;
 
-          // Start timer if not in infinite mode
-          if (!infiniteMode) {
-            startTimer(selectedTime);
+          // Start timer if set
+          if (remainingTime > 0) {
+            startTimer(remainingTime);
           }
 
           // Start visualizer
@@ -470,35 +449,22 @@
         }
       }
 
-      // Format time for display
-      function formatTimeDisplay(minutes) {
-        if (minutes <= 0) {
-          return "∞";
-        }
-
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-
-        if (hours > 0) {
-          return `${hours}h ${mins}m`;
-        } else {
-          return `${mins}m`;
-        }
-      }
-
       // Update the timer display
       function updateTimerDisplay() {
         const display = document.getElementById("timer-display");
 
-        if (infiniteMode) {
+        if (remainingTime <= 0) {
           display.textContent = "∞";
           return;
         }
 
-        if (isPlaying) {
-          display.textContent = formatTimeDisplay(remainingTime);
+        const hours = Math.floor(remainingTime / 60);
+        const minutes = remainingTime % 60;
+
+        if (hours > 0) {
+          display.textContent = `${hours}h ${minutes}m`;
         } else {
-          display.textContent = formatTimeDisplay(selectedTime);
+          display.textContent = `${minutes}m`;
         }
       }
 
@@ -522,46 +488,26 @@
         }, 60000); // Update every minute
       }
 
-      // Update timer based on slider
-      function updateTimerFromSlider(value) {
-        selectedTime = parseInt(value);
-
-        // Apply a non-linear scale to make it easier to select smaller values
-        // This gives more precision in the lower range
-        if (selectedTime <= 60) {
-          // 1-60 minutes, leave as is
-        } else if (selectedTime <= 120) {
-          // 1-2 hours, increment by 5 minutes
-          selectedTime = Math.floor(selectedTime / 5) * 5;
-        } else {
-          // 2-8 hours, increment by 15 minutes
-          selectedTime = Math.floor(selectedTime / 15) * 15;
-        }
-
-        // Update display
+      // Set timer preset
+      function setTimerPreset(minutes) {
+        remainingTime = minutes;
         updateTimerDisplay();
 
-        // If already playing, restart timer
-        if (isPlaying && !infiniteMode) {
-          startTimer(selectedTime);
-        }
-      }
-
-      // Toggle infinite mode
-      function toggleInfiniteMode() {
-        infiniteMode = document.getElementById("infinity-toggle").checked;
-        const timerSlider = document.getElementById("timer");
-
-        timerSlider.disabled = infiniteMode;
-
-        if (infiniteMode) {
+        // Clear existing timer if playing
+        if (isPlaying) {
           clearInterval(timerInterval);
-          remainingTime = -1;
-        } else if (isPlaying) {
-          startTimer(selectedTime);
+          if (minutes > 0) {
+            startTimer(minutes);
+          }
         }
 
-        updateTimerDisplay();
+        // Update active class
+        document.querySelectorAll(".timer-preset").forEach((preset) => {
+          preset.classList.remove("active");
+        });
+        document
+          .querySelector(`.timer-preset[data-time="${minutes}"]`)
+          .classList.add("active");
       }
 
       // Initialize the app
@@ -581,17 +527,12 @@
             }
           });
 
-        // Timer slider
-        const timerSlider = document.getElementById("timer");
-        timerSlider.addEventListener("input", function () {
-          updateTimerFromSlider(this.value);
+        // Timer presets
+        document.querySelectorAll(".timer-preset").forEach((preset) => {
+          preset.addEventListener("click", function () {
+            setTimerPreset(parseInt(this.dataset.time));
+          });
         });
-
-        // Infinity toggle
-        document
-          .getElementById("infinity-toggle")
-          .addEventListener("change", toggleInfiniteMode);
-        toggleInfiniteMode(); // Initialize state
 
         // Noise type options
         document.querySelectorAll(".noise-option").forEach((option) => {
@@ -634,18 +575,6 @@
               }
             });
         }
-      }
-
-      // Enable audio to continue in background
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("sw.js")
-          .then((registration) => {
-            console.log("ServiceWorker registration successful");
-          })
-          .catch((err) => {
-            console.log("ServiceWorker registration failed: ", err);
-          });
       }
 
       // Call init on page load
